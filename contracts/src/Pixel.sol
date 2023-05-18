@@ -3,76 +3,64 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./Block.sol";
+import "./RentFactory.sol";
+import "./IPixel.sol";
 
-contract Pixel is ERC1155, Ownable{
+contract Pixel is IPixel, ERC1155, Ownable {
     uint256 private constant INVERSE_COLOR = 16777216;
     uint256 private constant ID_LIMIT = 999999;
-    uint256 private constant COST = 1e9;
-    mapping(uint256=> uint24) private _color;
+
+    Block private _blockContract;
+    bool private _blockContractAlreadySet;
+
+    mapping(uint256 => address) private _pixelOwner;
+    mapping(uint256 => uint24) private _color;
     mapping(uint256 => bool) private _exists;
 
-    event ColorChange(address indexed caller, uint256[] ids, uint24[] colors);
+
 
     constructor() ERC1155(""){
     }
 
-    function mint(uint256 id_,uint24 color_) public payable {
-        require(msg.value >= COST, "Pixel: Insufficient amount");
-        require(!_exists[id_], "Pixel: pixel already minted");
-        require(id_<= ID_LIMIT, "Pixel: ID out of range");
-        _exists[id_] = true;
-        _color[id_] = color_;
-        _mint(msg.sender, id_, 1,"");
-        emit ColorChange(msg.sender,_asSingletonArrayUINT256(id_), _asSingletonArrayUINT24(color_));
-        
-        
-    }
-
-
-    function mint(uint24[] memory colors_, uint256[] memory ids_) public payable {
-        require(colors_.length == ids_.length, "Pixel: Array lengths mismatch");
-        require(ids_.length<=100, "Pixel: Batch limit exceeded");
-        require(msg.value >= COST * ids_.length, "Pixel: Insufficient amount");
-
-        for (uint256 i = 0; i < ids_.length; i++) {
-            if(_exists[ids_[i]]) {
-                revert("Pixel: pixel already minted");
-            }
-            if(ids_[i] > ID_LIMIT) {
-                revert("Pixel: ID out of range");
-            }
-        }
-
+    function mint(uint24[] memory colors_, uint256[] memory ids_, address buyer_) external {
+        require(msg.sender==address(_blockContract), "Only Block contract can mint!");
         uint256[] memory ones = new uint256[](ids_.length);
         for (uint256 i = 0; i < ids_.length; i++) {
             _exists[ids_[i]] = true;
             _color[ids_[i]] = colors_[i];
+            _pixelOwner[ids_[i]] = buyer_;
             ones[i] = 1;
         }
-        _mintBatch(msg.sender, ids_, ones, "");
-        emit ColorChange(msg.sender, ids_, colors_);
+        _mintBatch(buyer_, ids_, ones, "");
+        emit ColorChange(buyer_, ids_, colors_);
     }
 
-    function transform(uint24 color_, uint256 id_) public payable{
-        require(msg.value >= COST / 100, "Pixel: Insufficient amount");
-        require(_exists[id_], "Pixel: pixel not minted");
+    function transform(uint24 color_, uint256 id_) external {
+        require(_exists[id_], "Pixel: Pixel not minted");
+        require(msg.sender==_pixelOwner[id_], "Pixel: Not the owner");
         _color[id_] = color_;
         emit ColorChange(msg.sender,_asSingletonArrayUINT256(id_), _asSingletonArrayUINT24(color_));
     }
 
-    function transform(uint24[] memory colors_, uint256[] memory ids_) public payable{
+    function transform(uint24[] memory colors_, uint256[] memory ids_) external {
         require(colors_.length == ids_.length, "Pixel: Array lengths mismatch");
         require(ids_.length<=100, "Pixel: Batch limit exceeded");
-        require(msg.value >= COST / 100 * ids_.length, "Pixel: Insufficient amount");
+
         for (uint256 i = 0; i < ids_.length; i++) {
             if(!_exists[ids_[i]]) {
-                revert("Pixel: pixel not minted");
+                revert("Pixel: Pixel not minted");
             }
-        }
+            
+            if (msg.sender != _pixelOwner[ids_[i]]){
+                revert("Pixel: Not the owner");
+            }
+        }        
 
         for (uint256 i = 0; i < ids_.length; i++) {
             _color[ids_[i]] = colors_[i];
         }
+
         emit ColorChange(msg.sender, ids_, colors_);
     }
     
@@ -80,6 +68,21 @@ contract Pixel is ERC1155, Ownable{
     function getXY(uint256 id_) public pure returns(uint256,uint256) { 
         return (id_ % 1000, id_ / 1000);
     }
+
+    function getId(uint256 x, uint256 y) public pure returns(uint256) {
+        return y * 1000 + x;
+    }
+
+    function getBlockId(uint256 id_) public view returns(uint256) {
+        (uint256 xPixel, uint256 yPixel) = getXY(id_);
+        (uint256 xBlock, uint256 yBlock) = pixelXYtoBlockXY(xPixel, yPixel);
+        return _blockContract.getId(xBlock, yBlock);
+
+    }
+
+    function pixelXYtoBlockXY(uint256 x_, uint256 y_) public pure returns(uint256,uint256) {
+        return (x_/10, y_/10);
+    } 
 
     function color(uint256 id_) public view returns(uint24){
         return _color[id_];
@@ -90,7 +93,7 @@ contract Pixel is ERC1155, Ownable{
     }
 
     function getCanvasRow(uint256 row_)
-        public
+        external
         view
         returns (uint24[] memory)
     {
@@ -103,9 +106,29 @@ contract Pixel is ERC1155, Ownable{
         return cv;
     }
 
-    function withdraw() public onlyOwner {
+    function pixelOwner(uint256 id_) external view returns(address){
+        return _pixelOwner[id_];
+    }
+
+    function fairValue(uint256 id_) public view returns(uint256) {
+        return _blockContract.costPerPixel(getBlockId(id_));
+    }
+
+    function blockContract() external view returns(address){
+        return address(_blockContract);
+    }
+
+    function withdraw() external onlyOwner {
         payable(_msgSender()).transfer(address(this).balance);
     }
+
+    function setBlockContract(address contractAddress_) external onlyOwner {
+        require(!_blockContractAlreadySet, "Pixel: Block contract already set");
+        _blockContract = Block(contractAddress_);
+        _blockContractAlreadySet = true;
+
+    }
+
 
     function _asSingletonArrayUINT24(uint24 element) private pure returns (uint24[] memory) {
         uint24[] memory array = new uint24[](1);
@@ -120,7 +143,18 @@ contract Pixel is ERC1155, Ownable{
         return array;
     }
 
-    function cost() public pure returns (uint256) {
-        return COST;
+    function _beforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) internal virtual override {
+        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+
+        for(uint256 i=0; i<ids.length; i++) {
+            _pixelOwner[ids[i]] =  to;
+        }
     }
 }

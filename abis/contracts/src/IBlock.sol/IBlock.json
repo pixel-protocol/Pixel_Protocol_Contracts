@@ -1,0 +1,7 @@
+[
+  "event Mint(address indexed,uint256,uint256[],uint24[])",
+  "function getPixelColors(uint256) view returns (uint24[])",
+  "function getPixelIds(uint256) view returns (uint256[])",
+  "function getPixelOwners(uint256) view returns (address[])",
+  "function mint(uint256,uint24[]) payable"
+]

@@ -1,0 +1,8 @@
+[
+  "event ColorChange(address indexed,uint256[],uint24[])",
+  "function getCanvasRow(uint256) view returns (uint24[])",
+  "function mint(uint24[],uint256[],address)",
+  "function pixelOwner(uint256) view returns (address)",
+  "function transform(uint24[],uint256[])",
+  "function transform(uint24,uint256)"
+]
