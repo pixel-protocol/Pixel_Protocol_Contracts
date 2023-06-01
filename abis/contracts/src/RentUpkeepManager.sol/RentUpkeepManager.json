@@ -1,0 +1,11 @@
+[
+  "constructor()",
+  "event OwnershipTransferred(address indexed,address indexed)",
+  "function addKeeper(address) returns (uint256)",
+  "function attachFactory(address)",
+  "function owner() view returns (address)",
+  "function renounceOwnership()",
+  "function topUp(uint256)",
+  "function transferOwnership(address)",
+  "function viewUpkeep(uint256) view returns (tuple(address,uint32,bytes,uint96,address,uint64,uint32,uint96,bool,bytes))"
+]

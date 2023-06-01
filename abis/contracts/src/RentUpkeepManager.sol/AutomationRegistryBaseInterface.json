@@ -1,0 +1,4 @@
+[
+  "function addFunds(uint256,uint96)",
+  "function getUpkeep(uint256) view returns (tuple(address,uint32,bytes,uint96,address,uint64,uint32,uint96,bool,bytes))"
+]

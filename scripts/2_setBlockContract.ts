@@ -1,17 +1,12 @@
 import { ethers } from "hardhat";
+import {blockContractAddress,pixelContractAddress} from "../constants"
 
 async function main() {
   const pixelContractFactory = await ethers.getContractFactory("Pixel");
-  const pixelContract = await pixelContractFactory.deploy();
+  const pixelContract = pixelContractFactory.attach(pixelContractAddress);
 
-  await pixelContract.deployed();
-  console.log("Pixel deployed to:", pixelContract.address);
-
-  const blockContractFactory = await ethers.getContractFactory("Block");
-  const blockContract = await blockContractFactory.deploy(pixelContract.address);
-
-  await blockContract.deployed();
-  console.log("Block deployed to:", blockContract.address);
+  await pixelContract.setBlockContract(blockContractAddress);
+  console.log("Block contract set");
 }
 
 main().catch((error) => {

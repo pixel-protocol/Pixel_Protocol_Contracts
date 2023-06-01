@@ -1,0 +1,3 @@
+[
+  "function registerUpkeep(tuple(string,bytes,address,uint32,address,bytes,bytes,uint96)) returns (uint256)"
+]

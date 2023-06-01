@@ -2,7 +2,7 @@
   "constructor(address)",
   "event Approval(address indexed,address indexed,uint256 indexed)",
   "event ApprovalForAll(address indexed,address indexed,bool)",
-  "event Mint(address indexed,uint256,uint256[],uint24[])",
+  "event Mint(address indexed,uint256 indexed,uint256[],uint24[])",
   "event OwnershipTransferred(address indexed,address indexed)",
   "event Transfer(address indexed,address indexed,uint256 indexed)",
   "function approve(address,uint256)",
@@ -32,5 +32,6 @@
   "function tokenURI(uint256) view returns (string)",
   "function totalSupply() view returns (uint256)",
   "function transferFrom(address,address,uint256)",
-  "function transferOwnership(address)"
+  "function transferOwnership(address)",
+  "function withdraw()"
 ]

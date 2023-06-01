@@ -1,0 +1,6 @@
+export const pixelContractAddress = "0x92a5EC81F857fA8C3cF9391325344136770d4cb7"
+export const blockContractAddress = "0x1bf38885692c161aBc0CfFDb53A786947D80C396"
+export const stPixelContractAddress = "0xC9980afDDC4fE31a78D8B4c6567bb3920CA10a31"
+export const stBlockContractAddress = "0x5D67d0d2a300b79caF5b9B48F296068Da3D37c11"
+export const rentUpkeepManagerAddress = "0x3F2dd7ed9baC6E22cd80Ef765f1fCce6833700CE"
+export const rentFactoryAddress = "0x4e6a11B8E3edB645fe3dE347478B27f36aC75d7C"

@@ -1,45 +1,44 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "./ERC721B.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Block.sol";
-import "./RentFactory.sol";
-import "./IPixel.sol";
 
-contract Pixel is IPixel, ERC1155, Ownable {
-    uint256 private constant INVERSE_COLOR = 16777216;
+contract Pixel is ERC721B, Ownable {
+    uint24 private constant INVERSE_COLOR = 16777215;
     uint256 private constant ID_LIMIT = 999999;
 
     Block private _blockContract;
     bool private _blockContractAlreadySet;
 
-    mapping(uint256 => address) private _pixelOwner;
-    mapping(uint256 => uint24) private _color;
-    mapping(uint256 => bool) private _exists;
+    mapping(uint256 => uint24) private _invertedColor;
 
+    event ColorChange(address indexed changer, uint256[] indexed ids, uint24[] indexed colors);
 
-
-    constructor() ERC1155(""){
+    constructor() ERC721B("Pixel", "PIXEL"){
     }
 
     function mint(uint24[] memory colors_, uint256[] memory ids_, address buyer_) external {
-        require(msg.sender==address(_blockContract), "Only Block contract can mint!");
-        uint256[] memory ones = new uint256[](ids_.length);
-        for (uint256 i = 0; i < ids_.length; i++) {
-            _exists[ids_[i]] = true;
-            _color[ids_[i]] = colors_[i];
-            _pixelOwner[ids_[i]] = buyer_;
-            ones[i] = 1;
+        require(msg.sender==address(_blockContract), "Pixel: Only Block contract can mint!");
+        uint256 numPixels = ids_.length;
+        for (uint256 i = 0; i < numPixels;) {
+            if(ids_[i] > ID_LIMIT) {
+                revert("Pixel: Invalid Id");
+            }
+            _invertedColor[ids_[i]] = INVERSE_COLOR - colors_[i];
+            unchecked{
+                i++;
+            }
         }
-        _mintBatch(buyer_, ids_, ones, "");
+        _mintBatch(buyer_, ids_);
         emit ColorChange(buyer_, ids_, colors_);
     }
 
     function transform(uint24 color_, uint256 id_) external {
-        require(_exists[id_], "Pixel: Pixel not minted");
-        require(msg.sender==_pixelOwner[id_], "Pixel: Not the owner");
-        _color[id_] = color_;
+        require(_exists(id_), "Pixel: Pixel not minted");
+        require(msg.sender== ownerOf(id_), "Pixel: Not the owner");
+        _invertedColor[id_] = INVERSE_COLOR - color_;
         emit ColorChange(msg.sender,_asSingletonArrayUINT256(id_), _asSingletonArrayUINT24(color_));
     }
 
@@ -47,18 +46,28 @@ contract Pixel is IPixel, ERC1155, Ownable {
         require(colors_.length == ids_.length, "Pixel: Array lengths mismatch");
         require(ids_.length<=100, "Pixel: Batch limit exceeded");
 
-        for (uint256 i = 0; i < ids_.length; i++) {
-            if(!_exists[ids_[i]]) {
+        uint256 numPixels = ids_.length;
+
+        for (uint256 i = 0; i < numPixels;) {
+            if(!_exists(ids_[i])) {
                 revert("Pixel: Pixel not minted");
             }
             
-            if (msg.sender != _pixelOwner[ids_[i]]){
+            if (msg.sender != ownerOf(ids_[i])){
                 revert("Pixel: Not the owner");
+            }
+
+            unchecked{
+                i++;
             }
         }        
 
-        for (uint256 i = 0; i < ids_.length; i++) {
-            _color[ids_[i]] = colors_[i];
+        for (uint256 i = 0; i < numPixels; i++) {
+            _invertedColor[ids_[i]] = INVERSE_COLOR - colors_[i];
+
+            unchecked{
+                i++;
+            }
         }
 
         emit ColorChange(msg.sender, ids_, colors_);
@@ -85,11 +94,11 @@ contract Pixel is IPixel, ERC1155, Ownable {
     } 
 
     function color(uint256 id_) public view returns(uint24){
-        return _color[id_];
+        return INVERSE_COLOR - _invertedColor[id_];
     }
 
     function exists(uint256 id_) public view returns(bool) {
-        return _exists[id_];
+        return _exists(id_);
     }
 
     function getCanvasRow(uint256 row_)
@@ -100,14 +109,13 @@ contract Pixel is IPixel, ERC1155, Ownable {
         require(row_ <= 999, "Pixel: Row index out of range");
 
         uint24[] memory cv = new uint24[](1000);
-        for (uint256 i = 0; i < 1000; i++) {
-            cv[i] = _color[i + row_*1000];
+        for (uint256 i = 0; i < 1000;) {
+            cv[i] = INVERSE_COLOR -  _invertedColor[i + row_*1000];
+            unchecked {
+                i++;
+            }
         }
         return cv;
-    }
-
-    function pixelOwner(uint256 id_) external view returns(address){
-        return _pixelOwner[id_];
     }
 
     function fairValue(uint256 id_) public view returns(uint256) {
@@ -118,17 +126,12 @@ contract Pixel is IPixel, ERC1155, Ownable {
         return address(_blockContract);
     }
 
-    function withdraw() external onlyOwner {
-        payable(_msgSender()).transfer(address(this).balance);
-    }
-
     function setBlockContract(address contractAddress_) external onlyOwner {
         require(!_blockContractAlreadySet, "Pixel: Block contract already set");
         _blockContract = Block(contractAddress_);
         _blockContractAlreadySet = true;
 
     }
-
 
     function _asSingletonArrayUINT24(uint24 element) private pure returns (uint24[] memory) {
         uint24[] memory array = new uint24[](1);
@@ -141,20 +144,5 @@ contract Pixel is IPixel, ERC1155, Ownable {
         uint256[] memory array = new uint256[](1);
         array[0] = element;
         return array;
-    }
-
-    function _beforeTokenTransfer(
-        address operator,
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) internal virtual override {
-        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-
-        for(uint256 i=0; i<ids.length; i++) {
-            _pixelOwner[ids[i]] =  to;
-        }
     }
 }

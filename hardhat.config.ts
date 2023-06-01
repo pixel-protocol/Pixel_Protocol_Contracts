@@ -181,7 +181,7 @@ const config: HardhatUserConfig = {
     },
     mumbai: {
       chainId: 80001,
-      url: process.env.POLYGON_TESTNET_URL || "",
+      url: process.env.POLYGON_TESTNET_URL || "https://rpc-mumbai.maticvigil.com/",
       accounts:
         process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },

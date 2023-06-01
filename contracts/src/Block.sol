@@ -5,33 +5,41 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Pixel.sol";
-import "./IBlock.sol";
 
-contract Block is IBlock, ERC721, ERC721Enumerable, Ownable {
+contract Block is ERC721, ERC721Enumerable, Ownable {
+
     uint256 private constant ID_LIMIT = 9999;
 
     Pixel private immutable _pixelContract;
     
     mapping(uint256 =>uint256[]) private _pixelIds;
 
+    event Mint(address indexed owner, uint256 indexed id, uint256[] pixelIds, uint24[] pixelColors);
+    
     constructor(address pixelContract_) ERC721("Block","BLOCK"){
         _pixelContract = Pixel(pixelContract_);
     }
 
     function mint(uint256 id_, uint24[] memory colors_) external payable{
         require(!_exists(id_), "Block: Block already exists!");
-        require(id_ <= ID_LIMIT, "Block: Block ID is over the ID limit");
+        require(id_ <= ID_LIMIT, "Block: Invalid ID");
         require(msg.value >= costPerPixel(id_) * 100, "Block: Insufficient ETH balance");
-        require(colors_.length == 100, "Block: Invalid length of colors array");
+        require(colors_.length == 100, "Block: Invalid colors length");
 
-        uint256 row = id_ / 100;
-        uint256 col = id_ % 100;
+        uint256 x = id_ % 100;
+        uint256 y = id_ / 100;
 
         delete _pixelIds[id_];
 
-        for(uint256 j=0;j<10;j++){
-            for(uint256 k=0;k<10;k++){
-                _pixelIds[id_].push(row * 10 * 1000 + col * 10 + j + k * 1000);
+        for(uint256 j=0;j<10;){
+            for(uint256 k=0;k<10;){
+                _pixelIds[id_].push(x * 10 + y * 10 * 1000 + k + j*1000);
+                unchecked {
+                    k++;
+                }
+            }
+            unchecked {
+                j++;
             }
         }
 
@@ -84,32 +92,42 @@ contract Block is IBlock, ERC721, ERC721Enumerable, Ownable {
     }
 
     function getPixelIds(uint256 id_) external view returns(uint256[] memory){
-        require(_exists(id_), "Block: Block is not yet minted");
         return _pixelIds[id_];
 
     }
 
     function getPixelOwners(uint256 id_) external view returns(address[] memory) {
-        require(_exists(id_), "Block: Block is not yet minted");
         address[] memory owners = new address[](100);
+        if (_exists(id_)){
+            uint256[] memory selectedPixelIds = _pixelIds[id_];
 
-        uint256[] memory selectedPixelIds = _pixelIds[id_];
+            uint256 numPixels = selectedPixelIds.length;
 
-        for(uint256 i=0;i<selectedPixelIds.length;i++){
-            owners[i] = _pixelContract.pixelOwner(selectedPixelIds[i]);
+            for(uint256 i=0;i<numPixels;){
+                owners[i] = _pixelContract.ownerOf(selectedPixelIds[i]);
+                unchecked{
+                    i++;
+                }
+            }
         }
+        
         return owners;
 
     }
 
     function getPixelColors(uint256 id_) external view returns(uint24[] memory) {
-        require(_exists(id_), "Block: Block is not yet minted");
         uint24[] memory colors = new uint24[](100);
 
-        uint256[] memory selectedPixelIds = _pixelIds[id_];
+        if(_exists(id_)) {
+            uint256[] memory selectedPixelIds = _pixelIds[id_];
+            uint256 numPixels = selectedPixelIds.length;
 
-        for(uint256 i=0;i<selectedPixelIds.length;i++){
-            colors[i] = _pixelContract.color(selectedPixelIds[i]);
+            for(uint256 i=0;i<numPixels;){
+                colors[i] = _pixelContract.color(selectedPixelIds[i]);
+                unchecked {
+                    i++;
+                }
+            }
         }
         return colors;
     }
@@ -127,4 +145,6 @@ contract Block is IBlock, ERC721, ERC721Enumerable, Ownable {
         // Add your custom logic for supportsInterface function here
         return super.supportsInterface(interfaceId);
     }
+
+    
 }
