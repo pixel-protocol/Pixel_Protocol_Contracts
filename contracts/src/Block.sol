@@ -65,7 +65,7 @@ contract Block is ERC721, ERC721Enumerable, Ownable {
     }
 
     function costPerPixel(uint256 id_) public pure returns(uint256){
-        uint256[3] memory costs = [uint256(100 * 1e14), uint256(125 * 1e14), uint256(150 * 1e14)];
+        uint256[3] memory costs = [uint256(100 * 1e13), uint256(150 * 1e13), uint256(200 * 1e13)];
         return costs[tier(id_)];       
     }
 
