@@ -11,6 +11,8 @@ import "./StakedBlock.sol";
 import "./StakedPixel.sol";
 import "./RentFactory.sol";
 
+/// @dev A RentPool contract is created for each Block
+
 contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
     RentFactory private immutable _rentFactoryContract;
@@ -42,39 +44,87 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         Duration duration;
     }
 
-    PoolState public _poolState;
-
-    uint256 public _initialBaseCostPerPixel; // Initial cost per pixel for 30 days
-    uint256 public _cooldownDuration; // Duration between: PENDING to ONGOING
-    uint256 public _bidIncrement;
     uint256 private _blockId;
     uint256[] private _pixelIds;
+
+
+    /// @notice The current state of the pool.
+    /// Dormant: Pool is not accepting bids. Block owner needs to activate the pool in order to change the state to 'Active'.
+    /// Active: Pool is accepting bids but no bids currently.
+    /// Pending: Once a bid is made to the pool, pool becomes Pending. Pool will remain pending within the bid duration.
+    /// Ongoing: On permissionless function trigger when bid duration is over and there is >= 1 bid, pool state becomes 'Ongoing'. The rent period officially begins.
+    /// Ended: Rent period ends, Chainlink Automation will change pool state to 'Ended'
+    PoolState public _poolState;
+
+    /// @notice Floor price per pixel in a THIRTY days rent
+    uint256 public _initialBaseCostPerPixel;
+
+    /// @notice Number of days from the first bid to the end of the bidding period
+    uint256 public _cooldownDuration;
+
+    /// @notice (current bid) * (1+ _bidIncrement) = Minimum amount of next bid
+    uint256 public _bidIncrement;
+    
+    /// @notice Number of past/present rent instances OR id of last/current rent instance
     uint256 public _epoch;
+
+    /// @notice Cumulative unclaimed rewards belonging to the Block
     uint256 public _blockReward;
+
+    /// @notice Cumulative unclaimed rewards belonging to each Pixel
+    /// @dev Mapping from pixelId to the reward amount
     mapping(uint256 => uint256) public _pixelReward;
+
+    /// @notice Array of metadata of past epochs
     EpochMetadata[] public _epochs;
 
 
 
-    // Epoch specific variables - to be deleted at the end
-    uint256 public _initialCostPerPixel; // Initial cost per pixel for current epoch
-    uint256 public _numBids;
-    uint256 public _cooldownStartDate;
-    uint256 public _cooldownEndDate;
-    uint256 public _startDate;
-    uint256 public _endDate;
-    uint256 public _finalBidCostPerPixel;
-    uint256 public _pendingBlockReward; //Block reward accrued for current reward, will be added to total balance on 1. Unstake 2. Close Epoch
-    uint256 public _pendingPixelReward; //Pixel reward accrued for current reward per pixel, will be added to total balance on 1. Unstake 2. Close Epoch
+    /// @dev Epoch specific variables that will be deleted in the closeEpoch() function
 
+    /// @notice Floor price per pixel for current rent epoch
+    uint256 public _initialCostPerPixel;
+
+    /// @notice Number of bids submitted
+    uint256 public _numBids;
+
+    /// @notice Time of the first bid
+    uint256 public _cooldownStartDate;
+
+    /// @notice Time at end of bid duration. Users will be able to call the initiate() function from the next block onwards
+    uint256 public _cooldownEndDate;
+
+    /// @notice Start of the rent period. Also the time at which initiate() is called.
+    uint256 public _startDate;
+
+    /// @notice End of the rent period.
+    uint256 public _endDate;
+
+    /// @notice Floor price per pixel of the latest bid, and eventually the winning bid
+    uint256 public _finalBidCostPerPixel;
+
+    /// @notice Block reward accrued for current reward, will be added to total balance on 1. Unstake 2. Close Epoch
+    uint256 public _pendingBlockReward; 
+
+    /// @notice Pixel reward accrued for current reward per pixel, will be added to total balance on 1. Unstake 2. Close Epoch
+    uint256 public _pendingPixelReward; 
+
+    /// @dev Mapping from the bid Id to the address of the bidder
     mapping(uint256 => address) public _bidToBidder;
 
+    /// @dev Mapping from the bidder to their latest bid
     mapping(address => uint256) public _bidderToLastBid;
 
+    /// @dev Mapping from the bid Id to the colors of the corresponding bid
     mapping(uint256 => uint24[]) public _bidColors;
 
-    mapping(uint256 => uint256) public _bidCostPerPixel; //bid id => bid cost
+    /// @dev Mapping from the bid Id to the bid price of the corresponding bid
+    mapping(uint256 => uint256) public _bidCostPerPixel;
+
+    /// @dev Original state of the Pixels
     uint24[] public _origColors;
+
+    /// @dev Duration of the rent period
     Duration public _duration;
 
     constructor(uint256 id_, uint256 initialBaseCostPerPixel_, uint256 cooldownDuration_, uint256 bidIncrement_, address rentFactoryContract_) {
@@ -87,6 +137,9 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         _pixelIds = _blockContract.getPixelIds(id_);
     }
 
+    /// @notice monitors if upkeep is needed
+    /// Chainlink Automation will trigger the upkeep if the following conditions are met:
+    /// 1. Rent period has ended 2. Rent is still shown as ongoing
     function checkUpkeep(
         bytes calldata /* checkData */
     )
@@ -99,13 +152,13 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
         uint256 totalRewards = _finalBidCostPerPixel;
 
-        uint256 blockReward = totalRewards * 20 / 100; // 20% goes to block
+        uint256 blockReward = totalRewards * 20 / 100; /// 20% goes to block
 
         uint256 pixelRewards = totalRewards - blockReward;
 
-        uint256 blockRewardAfterFees = blockReward * 98 / 100; // 2% protocol fee
+        uint256 blockRewardAfterFees = blockReward * 98 / 100; /// 2% protocol fee
 
-        uint256 pixelRewardsAfterFees = pixelRewards * 98 / 100; // 2% protocol fee
+        uint256 pixelRewardsAfterFees = pixelRewards * 98 / 100; /// 2% protocol fee
 
         uint256 pixelRewardAfterFees = pixelRewardsAfterFees / 100;  
 
@@ -113,6 +166,10 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         
     }
 
+    /// @notice performs 3 upkeeps
+    /// 1. Set pool state to Ended
+    /// 2. Set the pending block reward and pending pixel reward
+    /// 3. Revert the colors of the pixels to their original state
     function performUpkeep(bytes calldata performData) external override {
         //We highly recommend revalidating the upkeep in the performUpkeep function
         if ((_poolState == PoolState.ONGOING) && (block.timestamp > _endDate)) {
@@ -149,7 +206,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
     }
 
-    // Permissionless, everyone can close an epoch
+    /// @notice Permissionless function that can be called by anyone to close the current epoch
     function closeEpoch() external {
         require(_poolState == PoolState.ENDED, "RentPool: Pool must be ended!");
         require(block.timestamp > _endDate + 7 * 1 days, "RentPool: Pool can only be closed 7 days after end date");
@@ -173,9 +230,9 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     function activate(uint256 duration_) external {
         require(_poolState == PoolState.DORMANT, "RentPool: Pool must be dormant!");
         require(
-            _stakedBlockContract.ownerOf(_blockId) == msg.sender // Block already in pool, caller has stBlock
+            _stakedBlockContract.ownerOf(_blockId) == msg.sender /// Block already in pool, caller has stBlock
             ||
-            _blockContract.ownerOf(_blockId) == msg.sender // Caller is Block owner
+            _blockContract.ownerOf(_blockId) == msg.sender /// Caller is Block owner
             ,
             "RentPool: Block not found or not owned");
 
@@ -192,9 +249,9 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     function deactivate() external {
         require(_poolState == PoolState.ACTIVE, "RentPool: Pool must be active!");
         require(
-            _stakedBlockContract.ownerOf(_blockId) == msg.sender // Block already in pool, caller has stBlock
+            _stakedBlockContract.ownerOf(_blockId) == msg.sender /// Block already in pool, caller has stBlock
             ||
-            _blockContract.ownerOf(_blockId) == msg.sender // Caller is Block owner
+            _blockContract.ownerOf(_blockId) == msg.sender /// Caller is Block owner
             ,
             "RentPool: Block not found or not owned"
         );
@@ -203,27 +260,24 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
     }
 
-    /**
-    Permissionless function, called when cooldown period ends to initiate rent contract
-    External caller will be rewarded with 0.5% of all bids
-     */
-
+    /// @notice Permissionless function, called when cooldown period ends to initiate the rent epoch. 
+    /// External caller will be rewarded with 0.5% of all bids.
     function initiate() external {
         require(_poolState == PoolState.PENDING && block.timestamp > _cooldownEndDate, "RentPool: Unable to initiate rent");
         
         if(!isFullyStaked()) {
             _poolState = PoolState.ACTIVE;
 
-            // Refund all bidders and set to active - epoch cancelled
+            /// Refund all bidders and set to active - epoch cancelled
             for(uint256 i = 1; i < _numBids + 1;){
                 address bidder = _bidToBidder[i];
                 uint256 lastBid = _bidderToLastBid[bidder];
 
                 if(lastBid == i) {
                     uint256 bidCost = _bidCostPerPixel[i] * 100;
-                    uint256 tax = bidCost * 5 / 1000; // 0.5%
+                    uint256 tax = bidCost * 5 / 1000; /// 0.5%
                     if (i==_numBids) {
-                        tax = bidCost * 2 / 100; // 2% penalty for not resolving winning bid
+                        tax = bidCost * 2 / 100; /// 2% penalty for not resolving winning bid
                     }
                     uint256 toBidder = bidCost - tax;
                     uint256 toCaller = tax;
@@ -245,7 +299,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
             uint256 numDays = (_duration==Duration.THIRTY) ? 30 : (_duration==Duration.NINETY) ? 90 : 180;
             _endDate = _startDate + numDays;
 
-            uint256 epoch = _epoch++; // start new epoch
+            uint256 epoch = _epoch++; /// start new epoch
             address tenant = _bidToBidder[_numBids];
 
 
@@ -278,6 +332,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         }
     }
 
+    /// @notice For caller to make their first bid in the rent epoch
     function makeBid(uint256 costPerPixel_, uint24[] memory colors_) external payable {
         require(_poolState == PoolState.ACTIVE || _poolState == PoolState.PENDING, "RentPool: Pool must be active or pending");
 
@@ -292,12 +347,13 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         if(_poolState == PoolState.ACTIVE) {
             _poolState = PoolState.PENDING;
         
-            // Update epoch variables
+            /// Update epoch variables
             _cooldownStartDate = block.timestamp;
             _cooldownEndDate = _cooldownStartDate + _cooldownDuration * 1 days;
         }
     }
 
+    /// @notice For caller with existing bid(s) to update their bid
     function updateBid(uint256 newCostPerPixel_, uint24[] memory colors_, bool isColorChanged) external payable {
         require(_poolState == PoolState.PENDING, "RentPool: Pool must be pending");
         require(newCostPerPixel_ == getMinNextBidCost(), "RentPool: Bid should be higher!");
@@ -317,7 +373,10 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     }
 
     function _storeBid(uint24[] memory colors_, address bidder_, uint256 costPerPixel_ ) internal {
-        _numBids++;
+        /// @dev 1-based indexing so that
+        /// the default value of zero in the _bidderToLastBid mapping indicates no bid from the user, 
+        /// instead of the erroneous fact that the user made the first bid
+        _numBids++; 
         _bidColors[_numBids] = colors_;
         _bidToBidder[_numBids] = bidder_;
         _bidderToLastBid[bidder_] = _numBids;
@@ -329,6 +388,9 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         return _bidderToLastBid[account_] != 0;
     }
 
+
+    /// @notice Pixel owner stakes their pixels and in return, receives an stPIXEL (Staked Pixel) for each pixels staked 
+    /// Staking is only allowed when the pool is Pending
     function stakePixel(uint256[] memory ids_) external {
         require(_poolState == PoolState.PENDING, "RentPool: Pool must be pending");
         uint256 numPixels = ids_.length;
@@ -350,6 +412,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         
     }
 
+    /// @notice Pixel owner unstakes their pixels by sending the stPIXEL (Staled Pixel) equivalent to the contract, which will then be burned by the contract. In return, they receive back the pixels they staked in the contract
     function unstakePixelWithRewards(uint256[] memory ids_) external {
         require(_poolState != PoolState.PENDING || _poolState != PoolState.ONGOING, "RentPool: Pool must not be pending or ongoing");
         uint256 numPixels = ids_.length;
@@ -380,6 +443,8 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         
     }
 
+    /// @notice Block owner stakes their block and in return, receives an stBLOCK (Staked Block)
+    /// Staking is only allowed when the pool is Pending
     function stakeBlock() external {
         require(_poolState == PoolState.PENDING, "RentPool: Pool must be pending");
         require(
@@ -394,6 +459,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         
     }
 
+    /// @notice Block owner unstakes their block by sending the stBLOCK (Staked Blcok) equivalent to the contract, which will then be burned by the contract. In return, they receive back the block they staked in the contract
     function unstakeBlockWithRewards() external {
         require(_poolState != PoolState.PENDING || _poolState != PoolState.ONGOING, "RentPool: Pool must not be pending or ongoing");
         require(
@@ -440,9 +506,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         isBlock_ ? _blockContract.ownerOf(_blockId) == address(this) : _pixelContract.ownerOf(id_) == address(this);
     }
 
-    /**
-    Fully Staked: 1 Block + 100 Pixels
-     */
+    /// @notice Fully Staked: 1 Block + 100 Pixels
     function isFullyStaked() public view returns(bool) {
 
         for(uint256 i=0; i< 100;) {
@@ -463,22 +527,18 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         delete _finalBidCostPerPixel;
         delete _pendingBlockReward;
         delete _pendingPixelReward;
-        /**
-        Unable to delete mappings:
-        _bidToBidder;
-        _bidderToLastBid;
-        _bidColors;
-        _bidCostPerPixel;
-
-        while mapping may stay, values are assigned to and overriden in mapping
-         */
-
-
         delete _numBids;
         delete _cooldownStartDate;
         delete _cooldownEndDate;
         delete _startDate;
         delete _endDate;
+
+        /// @dev Unable to delete mappings:
+        /// _bidToBidder;
+        /// _bidderToLastBid;
+        /// _bidColors;
+        /// _bidCostPerPixel;
+        /// While mappings are not deleted, it does not matter as they are overridden and do not affect anything
     }
 
     function onERC721Received(

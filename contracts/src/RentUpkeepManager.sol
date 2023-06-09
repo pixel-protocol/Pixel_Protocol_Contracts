@@ -3,8 +3,8 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./RentFactory.sol";
-
 import {LinkTokenInterface} from "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
+
 
 struct RegistrationParams {
     string name;
@@ -30,6 +30,10 @@ struct UpkeepInfo {
   bytes offchainConfig;
 }
 
+/// @title A simulator for trees
+/// @author Larry A. Gardner
+/// @notice You can use this contract for only the most basic simulation
+/// @dev All function calls are currently implemented without side effects
 interface KeeperRegistrarInterface {
     function registerUpkeep(
         RegistrationParams calldata requestParams
