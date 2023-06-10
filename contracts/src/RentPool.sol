@@ -223,8 +223,6 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         _deleteEpochStates();
         _poolState = PoolState.DORMANT;
 
-        
-
     }
 
     function activate(uint256 duration_) external {
