@@ -17,9 +17,9 @@ contract RentFactory is Ownable {
     uint256 private constant ID_LIMIT = 9999;
     Pixel private constant _pixelContract = Pixel(0x4bf4F110dB84e87d4cA89FAd14A47Aa2B8CA3499);
     Block private constant _blockContract = Block(0xbDb7c44fE4fcfC380EecB40ae237360285B55D2d);
-    StakedPixel private constant _stakedPixelContract = StakedPixel(0x0EfeF206ba99be9c0ED203241CFd1fc9854bB929);
-    StakedBlock private constant _stakedBlockContract = StakedBlock(0x82B669e7e2C40EFe1C6F572C80d090b313774f4D);
-    RentUpkeepManager private constant _rentUpkeepManagerContract = RentUpkeepManager(0x0E4C0a49f2728D85069811514675957F149715c0);
+    StakedPixel private constant _stakedPixelContract = StakedPixel(0x430308df4D91e07384c71Af8c4deA4200C05B298);
+    StakedBlock private constant _stakedBlockContract = StakedBlock(0x46e0FF7458674648b83b5cAf127d84e522B3e6Ad);
+    RentUpkeepManager private constant _rentUpkeepManagerContract = RentUpkeepManager(0x6cC3d89B3086Dc59A44FEa975ca6d414342DE1e2);
 
     mapping(uint256 =>address) private _rentPoolContract; /// Block ID => Rent Pool Address
     mapping(uint256 => uint256) private _upkeepId;

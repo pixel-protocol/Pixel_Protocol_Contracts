@@ -64,7 +64,7 @@ contract RentUpkeepManager is Ownable {
             "upkeep",
             "0x",
             contract_,
-            1000000, /// gas limit
+            2000000, /// gas limit
             address(this),
             "0x",
             "0x",

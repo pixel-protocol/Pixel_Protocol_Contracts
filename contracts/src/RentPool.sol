@@ -44,8 +44,8 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     RentFactory private immutable _rentFactoryContract;
     Pixel private constant _pixelContract = Pixel(0x4bf4F110dB84e87d4cA89FAd14A47Aa2B8CA3499);
     Block private constant _blockContract = Block(0xbDb7c44fE4fcfC380EecB40ae237360285B55D2d);
-    StakedPixel private constant _stakedPixelContract = StakedPixel(0x0EfeF206ba99be9c0ED203241CFd1fc9854bB929);
-    StakedBlock private constant _stakedBlockContract = StakedBlock(0x82B669e7e2C40EFe1C6F572C80d090b313774f4D);
+    StakedPixel private constant _stakedPixelContract = StakedPixel(0x430308df4D91e07384c71Af8c4deA4200C05B298);
+    StakedBlock private constant _stakedBlockContract = StakedBlock(0x46e0FF7458674648b83b5cAf127d84e522B3e6Ad);
 
     uint256 private _blockId;
     uint256[] private _pixelIds;
@@ -192,14 +192,17 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         }
     }
 
-    function adjustPoolParameters( uint256 baseFloorBidPerPixel_, uint256 bidDuration_, uint256 bidIncrement_) external {
+    modifier onlyBlockOrStakedBlockOwner() {
+        if(_stakedBlockContract.exists(_blockId)){
+            if(_stakedBlockContract.ownerOf(_blockId) != msg.sender) revert("RentPool: Block not found or not owned");
+        } else {
+            if(_blockContract.ownerOf(_blockId) != msg.sender) revert("RentPool: Block not found or not owned");
+        }
+        _;
+    }
+
+    function adjustPoolParameters( uint256 baseFloorBidPerPixel_, uint256 bidDuration_, uint256 bidIncrement_) external onlyBlockOrStakedBlockOwner {
         require(_poolState == PoolState.DORMANT, "RentPool: Pool must be dormant");
-        require(
-            _blockContract.ownerOf(_blockId) == address(this) // Block already in pool
-            ||
-            _blockContract.ownerOf(_blockId) == msg.sender // Caller is Block owner
-            ,
-            "RentPool: Block not found or not owned");
         require(bidDuration_ == 0 || bidDuration_ >= 3 && bidDuration_ <= 7, "RentPool: Bid duration out of range");
         require(bidIncrement_ == 0 || bidIncrement_ >= 5 && bidIncrement_ <= 20 , "RentPool: Bid increment out of range");
         require(baseFloorBidPerPixel_ == 0 || baseFloorBidPerPixel_ >= _blockContract.costPerPixel(_blockId), "RentPool: Base floor bid per pixel out of range");
@@ -231,14 +234,8 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     }
 
     /// @notice Activate the rent pool in order to start accepting bids
-    function activate(uint256 duration_) external {
+    function activate(uint256 duration_) external onlyBlockOrStakedBlockOwner {
         require(_poolState == PoolState.DORMANT, "RentPool: Pool must be dormant");
-        require(
-            _stakedBlockContract.ownerOf(_blockId) == msg.sender /// Block already in pool, caller has stBlock
-            ||
-            _blockContract.ownerOf(_blockId) == msg.sender /// Caller is Block owner
-            ,
-            "RentPool: Block not found or not owned");
 
         require(duration_ <= 2, "RentPool: Duration out of bound");
 
@@ -251,16 +248,8 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     }
 
     /// @notice Deactivate the rent pool in order to stop accepting bids
-    function deactivate() external {
+    function deactivate() external onlyBlockOrStakedBlockOwner{
         require(_poolState == PoolState.ACTIVE, "RentPool: Pool must be active");
-        require(
-            _stakedBlockContract.ownerOf(_blockId) == msg.sender /// Block already in pool, caller has stBlock
-            ||
-            _blockContract.ownerOf(_blockId) == msg.sender /// Caller is Block owner
-            ,
-            "RentPool: Block not found or not owned"
-        );
-
         _poolState = PoolState.DORMANT;
 
         emit PoolStateChange(_epoch, PoolState.ACTIVE, PoolState.DORMANT);
@@ -461,7 +450,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         uint256 reward = _blockReward;
         delete _blockReward;
 
-        _stakedPixelContract.burn(_blockId);
+        _stakedBlockContract.burn(_blockId);
         _blockContract.transferFrom(address(this),msg.sender,_blockId);
 
         payable(_msgSender()).transfer(reward);
@@ -476,7 +465,6 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     /// 30 days: baseFloorBidPerPixel
     /// 90 days: 2 * baseFloorBidPerPixel
     /// 180 days: 3 * baseFloorBidPerPixel
-
     function getFloorBidPerPixel(uint256 num_) public view returns(uint256) {
         if(num_>2) {
             return 0;
