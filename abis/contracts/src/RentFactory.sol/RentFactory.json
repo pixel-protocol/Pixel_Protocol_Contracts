@@ -1,7 +1,7 @@
 [
   "constructor()",
-  "event CreatePool(uint256 indexed,address,address)",
   "event OwnershipTransferred(address indexed,address indexed)",
+  "event RentPoolCreation(uint256 indexed,address indexed,address)",
   "function createRentPool(uint256,uint256,uint256,uint256)",
   "function getPoolAddress(uint256) view returns (address)",
   "function getPoolUpkeep(uint256) view returns (uint256)",

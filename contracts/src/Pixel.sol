@@ -12,6 +12,9 @@ contract Pixel is ERC721B, Ownable {
     Block private _blockContract;
     bool private _blockContractAlreadySet;
 
+    /// @dev Inverted color = 16777215 - actual color
+    /// For example, the inverted color is 0 for white and 16777215 for white
+    /// This is so that when a pixel is not minted, or the color not set, the default color is white
     mapping(uint256 => uint24) private _invertedColor;
 
     event ColorChange(address indexed changer, uint256[] indexed ids, uint24[] indexed colors);
@@ -19,6 +22,7 @@ contract Pixel is ERC721B, Ownable {
     constructor() ERC721B("Pixel", "PIXEL"){
     }
 
+    /// @dev Function is only callable from the Block contract
     function mint(uint24[] memory colors_, uint256[] memory ids_, address buyer_) external {
         require(msg.sender==address(_blockContract), "Pixel: Only Block contract can mint!");
         uint256 numPixels = ids_.length;
@@ -35,6 +39,7 @@ contract Pixel is ERC721B, Ownable {
         emit ColorChange(buyer_, ids_, colors_);
     }
 
+    /// @notice Changes the color of a pixel
     function transform(uint24 color_, uint256 id_) external {
         require(_exists(id_), "Pixel: Pixel not minted");
         require(msg.sender== ownerOf(id_), "Pixel: Not the owner");
@@ -42,6 +47,7 @@ contract Pixel is ERC721B, Ownable {
         emit ColorChange(msg.sender,_asSingletonArrayUINT256(id_), _asSingletonArrayUINT24(color_));
     }
 
+    /// @notice Changes the color of a batch of pixels
     function transform(uint24[] memory colors_, uint256[] memory ids_) external {
         require(colors_.length == ids_.length, "Pixel: Array lengths mismatch");
         require(ids_.length<=100, "Pixel: Batch limit exceeded");
@@ -118,6 +124,7 @@ contract Pixel is ERC721B, Ownable {
         return cv;
     }
 
+    /// @notice Also the initial mint price of a pixel
     function fairValue(uint256 id_) public view returns(uint256) {
         return _blockContract.costPerPixel(getBlockId(id_));
     }
@@ -125,7 +132,7 @@ contract Pixel is ERC721B, Ownable {
     function blockContract() external view returns(address){
         return address(_blockContract);
     }
-
+    
     function setBlockContract(address contractAddress_) external onlyOwner {
         require(!_blockContractAlreadySet, "Pixel: Block contract already set");
         _blockContract = Block(contractAddress_);

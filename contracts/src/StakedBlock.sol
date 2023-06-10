@@ -20,15 +20,15 @@ contract StakedBlock is ERC721, Ownable {
 
     function mint(uint256 id_, address recipient_) external {
         require(_isRentPool[msg.sender], "StakedBlock: Caller is not a Rent Pool");
-        require(!_exists(id_), "Block: Block already exists!");
-        require(id_ <= ID_LIMIT, "Block: Invalid ID");
+        require(!_exists(id_), "StakedBlock: Block already exists!");
+        require(id_ <= ID_LIMIT, "StakedBlock: Invalid ID");
 
         _safeMint(recipient_, id_);
     }
 
     function burn(uint256 id_) external {
         require(_isRentPool[msg.sender], "StakedBlock: Caller is not a Rent Pool");
-        require(_exists(id_), "Block: Block does not exists!");
+        require(_exists(id_), "StakedBlock: Block does not exists!");
 
         _burn(id_);
     }

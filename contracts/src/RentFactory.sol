@@ -12,30 +12,32 @@ import "./RentUpkeepManager.sol";
 contract RentFactory is Ownable {
     
 
-    event CreatePool(uint256 indexed id, address pool, address creator);
+    event RentPoolCreation(uint256 indexed id, address indexed pool, address creator);
 
     uint256 private constant ID_LIMIT = 9999;
-    Pixel private constant _pixelContract = Pixel(0x92a5EC81F857fA8C3cF9391325344136770d4cb7);
-    Block private constant _blockContract = Block(0x1bf38885692c161aBc0CfFDb53A786947D80C396);
-    StakedPixel private constant _stakedPixelContract = StakedPixel(0xC9980afDDC4fE31a78D8B4c6567bb3920CA10a31);
-    StakedBlock private constant _stakedBlockContract = StakedBlock(0x5D67d0d2a300b79caF5b9B48F296068Da3D37c11);
-    RentUpkeepManager private constant _rentUpkeepManagerContract = RentUpkeepManager(0x3F2dd7ed9baC6E22cd80Ef765f1fCce6833700CE);
+    Pixel private constant _pixelContract = Pixel(0x4bf4F110dB84e87d4cA89FAd14A47Aa2B8CA3499);
+    Block private constant _blockContract = Block(0xbDb7c44fE4fcfC380EecB40ae237360285B55D2d);
+    StakedPixel private constant _stakedPixelContract = StakedPixel(0x0EfeF206ba99be9c0ED203241CFd1fc9854bB929);
+    StakedBlock private constant _stakedBlockContract = StakedBlock(0x82B669e7e2C40EFe1C6F572C80d090b313774f4D);
+    RentUpkeepManager private constant _rentUpkeepManagerContract = RentUpkeepManager(0x0E4C0a49f2728D85069811514675957F149715c0);
 
-    mapping(uint256 =>address) private _rentPoolContract; // Block ID => Rent Pool Address
+    mapping(uint256 =>address) private _rentPoolContract; /// Block ID => Rent Pool Address
     mapping(uint256 => uint256) private _upkeepId;
 
     constructor() {}
 
-    function createRentPool(uint256 id_, uint256 initialBaseCostPerPixel_, uint256 cooldownDuration_, uint256 bidIncrement_) external {
+    /// @notice Block owner can create a rent pool for the respective block
+    /// @dev Function is only callable to block owner
+    function createRentPool(uint256 id_, uint256 baseFloorBidPerPixel_, uint256 bidDuration_, uint256 bidIncrement_) external {
         require(_rentPoolContract[id_]==address(0), "RentFactory: Rent Pool already exists");
         require(_blockContract.ownerOf(id_) == msg.sender, "RentFactory: Not the Block owner");
         require(id_ <= ID_LIMIT, "RentFactory: Invalid Block ID");
-        require(cooldownDuration_ > 0 && cooldownDuration_ <= 7, "RentFactory: Cooldown duration out of range");
-        require(bidIncrement_ > 0 && bidIncrement_ <= 20 , "RentFactory: Bid increment out of range");
-        require(initialBaseCostPerPixel_ >= _blockContract.costPerPixel(id_), "RentFactory: Initial base cost per pixel < cost per pixel");
+        require(bidDuration_ >= 3 && bidDuration_ <= 7, "RentFactory: Bid duration out of range");
+        require(bidIncrement_ >= 5 && bidIncrement_ <= 20 , "RentFactory: Bid increment out of range");
+        require(baseFloorBidPerPixel_ >= _blockContract.costPerPixel(id_), "RentFactory: Base floor bid per pixel out of range");
 
     
-        RentPool rentPool = new RentPool(id_, initialBaseCostPerPixel_, cooldownDuration_, bidIncrement_, address(this));
+        RentPool rentPool = new RentPool(id_, baseFloorBidPerPixel_, bidDuration_, bidIncrement_, address(this));
         _rentPoolContract[id_] = address(rentPool);
         _stakedBlockContract.registerPool(address(rentPool));
         _stakedPixelContract.registerPool(address(rentPool));
@@ -43,7 +45,7 @@ contract RentFactory is Ownable {
         uint256 upkeepId = _rentUpkeepManagerContract.addKeeper(address(rentPool));
         _upkeepId[id_] = upkeepId;
 
-        emit CreatePool(id_, address(rentPool), msg.sender);
+        emit RentPoolCreation(id_, address(rentPool), msg.sender);
 
     }
 

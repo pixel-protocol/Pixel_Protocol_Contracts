@@ -65,18 +65,22 @@ contract Block is ERC721, ERC721Enumerable, Ownable {
     }
 
     function costPerPixel(uint256 id_) public pure returns(uint256){
+        /// @notice mint price of pixel, determined by tier
+        /// Tiers:
+        /// A: 0.001 MATIC
+        /// B: 0.0015 MATIC
+        /// C: 0.002 MATIC
+
         uint256[3] memory costs = [uint256(100 * 1e13), uint256(150 * 1e13), uint256(200 * 1e13)];
         return costs[tier(id_)];       
     }
 
     function tier(uint256 id_) public pure returns(uint256) {
-        /* 
-        3 Tiers:
-        Platinum: 40 <= X < 60 && 40 <= Y < 60
-        Gold:  20 <= X < 80 && 20 <= Y < 80
-        Silver: remaining
-        Platinum = 2; Gold = 1; Silver = 0;
-        */
+        /// @notice 3 Tiers:
+        /// A: 40 <= X < 60 && 40 <= Y < 60
+        /// B: 20 <= X < 80 && 20 <= Y < 80
+        /// C: remaining
+        /// A = 2; B = 1; C = 0;
 
         (uint256 X, uint256 Y) = getXY(id_);
 

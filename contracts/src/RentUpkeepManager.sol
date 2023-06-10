@@ -64,7 +64,7 @@ contract RentUpkeepManager is Ownable {
             "upkeep",
             "0x",
             contract_,
-            500000, //gas limit
+            1000000, /// gas limit
             address(this),
             "0x",
             "0x",
@@ -82,7 +82,7 @@ contract RentUpkeepManager is Ownable {
         UpkeepInfo memory upkeepInfo = _registry.getUpkeep(upkeepId_);
 
         if(upkeepInfo.balance >= 5e17) {
-            // only tops up when LINK balance < 0.5 LINK
+            /// only tops up when LINK balance < 0.5 LINK
             revert("RentUpkeepManager: Upkeep does not require funding");
         }
         _registry.addFunds(upkeepId_, 5e17);
