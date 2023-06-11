@@ -332,7 +332,6 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     function makeBid(uint256 bidPerPixel_, uint24[] memory colors_) external payable {
         require(_poolState == PoolState.ACTIVE || _poolState == PoolState.PENDING, "RentPool: Pool must be active or pending");
 
-
         require(bidPerPixel_ >= getMinNextBid(), "RentPool: Bid should be higher");
 
         require(msg.value >= bidPerPixel_ * 100, "RentPool: Insufficient ETH balance");
