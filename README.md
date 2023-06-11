@@ -18,8 +18,13 @@ Pixel Protocol is a Web3 ecosystem powered by NFTs. It offers "The Homepage," a 
 ## UML Diagrams
 
 - Pixel Protocol (All Contracts)
+![All Contracts Diagram](https://raw.githubusercontent.com/pixel-protocol/Pixel_Protocol_Contracts/main/class_diagrams/classDiagram.svg?sanitize=true)
+<img src="https://raw.githubusercontent.com/pixel-protocol/Pixel_Protocol_Contracts/main/class_diagrams/classDiagram.svg?sanitize=true">
 
 - Pixel Protocol - RentPool.sol
+![All Contracts Diagram](https://raw.githubusercontent.com/pixel-protocol/Pixel_Protocol_Contracts/main/class_diagrams/rentPoolClassDiagram.svg?sanitize=true)
+<img src="https://raw.githubusercontent.com/pixel-protocol/Pixel_Protocol_Contracts/main/class_diagrams/rentPoolClassDiagram.svg?sanitize=true">
+
 
 ## Installation
 
