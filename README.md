@@ -1,5 +1,20 @@
 # Pixel Protocol
 
+## Overview
+
+Pixel Protocol is a Web3 ecosystem powered by NFTs. It offers "The Homepage," a decentralized canvas where users can engage in public discourse, convey meaningful messages, and showcase art. The protocol facilitates community building, passive income through pixel rentals, fractional ownership of NFTs, and decentralized governance.
+
+## Contracts
+
+- ERC721B.sol
+- Pixel.sol
+- Block.sol
+- StakedPixel.sol
+- StakedBlock.sol
+- RentUpkeepManager.sol
+- RentFactory.sol
+- RentPool.sol
+
 ## UML Diagrams
 
 - Pixel Protocol (All Contracts)
