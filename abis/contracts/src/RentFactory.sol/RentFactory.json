@@ -1,5 +1,11 @@
 [
   "constructor()",
+  "error RentFactory__BaseFloorBidPerPixelOutOfRange()",
+  "error RentFactory__BidDurationOutOfRange()",
+  "error RentFactory__BidIncrementOutOfRange()",
+  "error RentFactory__InvalidBlockId(uint256)",
+  "error RentFactory__NotBlockOwner(uint256,address)",
+  "error RentFactory__PoolAlreadyExists(uint256)",
   "event OwnershipTransferred(address indexed,address indexed)",
   "event RentPoolCreation(uint256 indexed,address indexed,address)",
   "function createRentPool(uint256,uint256,uint256,uint256)",

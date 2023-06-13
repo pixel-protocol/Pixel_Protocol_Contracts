@@ -46,6 +46,9 @@ interface AutomationRegistryBaseInterface {
 }
 
 contract RentUpkeepManager is Ownable {
+    error RentUpkeepManager__NotRentFactory();
+    error RentUpkeepManager__RentFactoryAlreadySet();
+    error RentUpkeepManager__DoesNotRequireFunding();
     
     LinkTokenInterface private constant _link = LinkTokenInterface(0x326C977E6efc84E512bB9C30f76E30c160eD06FB);
     KeeperRegistrarInterface private constant _registrar = KeeperRegistrarInterface(0x57A4a13b35d25EE78e084168aBaC5ad360252467);
@@ -58,7 +61,7 @@ contract RentUpkeepManager is Ownable {
     }
 
     function addKeeper(address contract_) external returns(uint256 upkeepId) {
-        require(msg.sender==address(_rentFactory), "RentUpkeepManager: Not the factory");
+        if(msg.sender!=address(_rentFactory)) revert RentUpkeepManager__NotRentFactory();
         
         RegistrationParams memory params = RegistrationParams(
             "upkeep",
@@ -83,7 +86,7 @@ contract RentUpkeepManager is Ownable {
 
         if(upkeepInfo.balance >= 5e17) {
             /// only tops up when LINK balance < 0.5 LINK
-            revert("RentUpkeepManager: Upkeep does not require funding");
+            revert RentUpkeepManager__DoesNotRequireFunding();
         }
         _registry.addFunds(upkeepId_, 5e17);
     }
@@ -93,7 +96,7 @@ contract RentUpkeepManager is Ownable {
     }
 
     function attachFactory(address factoryContract_) public onlyOwner {
-        require(!_rentFactoryIsSet, "RentUpkeepManager: Factory exists");
+        if(_rentFactoryIsSet) revert RentUpkeepManager__RentFactoryAlreadySet();
         _rentFactory = RentFactory(factoryContract_);
         _rentFactoryIsSet = true;
     }

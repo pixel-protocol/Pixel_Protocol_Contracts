@@ -7,6 +7,13 @@ import "./RentFactory.sol";
 
 contract StakedBlock is ERC721, Ownable {
 
+    error StakedBlock__NotRentPool();
+    error StakedBlock__NotRentFactory();
+    error StakedBlock__AlreadyMinted(uint256 id);
+    error StakedBlock__NotMinted(uint256 id);
+    error StakedBlock__InvalidId(uint256 num);
+    error StakedBlock__FactoryAlreadySet();
+
     bool _factoryIsSet;
 
     RentFactory private _rentFactoryContract;
@@ -19,28 +26,28 @@ contract StakedBlock is ERC721, Ownable {
     constructor() ERC721("stBlock","stBLOCK"){}
 
     function mint(uint256 id_, address recipient_) external {
-        require(_isRentPool[msg.sender], "StakedBlock: Caller is not a Rent Pool");
-        require(!_exists(id_), "StakedBlock: Block already exists!");
-        require(id_ <= ID_LIMIT, "StakedBlock: Invalid ID");
+        if(id_ > ID_LIMIT) revert StakedBlock__InvalidId(id_);
+        if(!_isRentPool[msg.sender]) revert StakedBlock__NotRentPool();
+        if(_exists(id_)) revert StakedBlock__AlreadyMinted(id_);
 
         _safeMint(recipient_, id_);
     }
 
     function burn(uint256 id_) external {
-        require(_isRentPool[msg.sender], "StakedBlock: Caller is not a Rent Pool");
-        require(_exists(id_), "StakedBlock: Block does not exists!");
+        if(!_isRentPool[msg.sender]) revert StakedBlock__NotRentPool();
+        if(!_exists(id_)) revert StakedBlock__NotMinted(id_);
 
         _burn(id_);
     }
 
     function registerFactory(address rentFactoryContract_) external onlyOwner {
-        require(!_factoryIsSet, "StakedBlock: Factory is set");
+        if(_factoryIsSet) revert StakedBlock__FactoryAlreadySet();
         _rentFactoryContract = RentFactory(rentFactoryContract_);
         _factoryIsSet = true;
     }
 
     function registerPool(address poolContract_) external {
-        require(msg.sender == address(_rentFactoryContract), "StakedBlock: Caller is not Rent Factory");
+        if(msg.sender != address(_rentFactoryContract)) revert StakedBlock__NotRentFactory();
         _isRentPool[poolContract_] = true;
     }    
 

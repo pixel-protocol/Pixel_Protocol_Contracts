@@ -1,5 +1,11 @@
 [
   "constructor()",
+  "error StakedBlock__AlreadyMinted(uint256)",
+  "error StakedBlock__FactoryAlreadySet()",
+  "error StakedBlock__InvalidId(uint256)",
+  "error StakedBlock__NotMinted(uint256)",
+  "error StakedBlock__NotRentFactory()",
+  "error StakedBlock__NotRentPool()",
   "event Approval(address indexed,address indexed,uint256 indexed)",
   "event ApprovalForAll(address indexed,address indexed,bool)",
   "event OwnershipTransferred(address indexed,address indexed)",

@@ -10,7 +10,12 @@ import "./StakedPixel.sol";
 import "./RentUpkeepManager.sol";
 
 contract RentFactory is Ownable {
-    
+    error RentFactory__PoolAlreadyExists(uint256 id);
+    error RentFactory__NotBlockOwner(uint256 id, address caller);
+    error RentFactory__InvalidBlockId(uint256 num);
+    error RentFactory__BidDurationOutOfRange();
+    error RentFactory__BidIncrementOutOfRange();
+    error RentFactory__BaseFloorBidPerPixelOutOfRange();
 
     event RentPoolCreation(uint256 indexed id, address indexed pool, address creator);
 
@@ -29,12 +34,13 @@ contract RentFactory is Ownable {
     /// @notice Block owner can create a rent pool for the respective block
     /// @dev Function is only callable to block owner
     function createRentPool(uint256 id_, uint256 baseFloorBidPerPixel_, uint256 bidDuration_, uint256 bidIncrement_) external {
-        require(_rentPoolContract[id_]==address(0), "RentFactory: Rent Pool already exists");
-        require(_blockContract.ownerOf(id_) == msg.sender, "RentFactory: Not the Block owner");
-        require(id_ <= ID_LIMIT, "RentFactory: Invalid Block ID");
-        require(bidDuration_ >= 3 && bidDuration_ <= 7, "RentFactory: Bid duration out of range");
-        require(bidIncrement_ >= 5 && bidIncrement_ <= 20 , "RentFactory: Bid increment out of range");
-        require(baseFloorBidPerPixel_ >= _blockContract.costPerPixel(id_), "RentFactory: Base floor bid per pixel out of range");
+        if(_rentPoolContract[id_]!=address(0)) revert RentFactory__PoolAlreadyExists(id_);
+        if(_blockContract.ownerOf(id_) != msg.sender) revert RentFactory__NotBlockOwner(id_, msg.sender);
+        if(id_ > ID_LIMIT) revert RentFactory__InvalidBlockId(id_);
+
+        if(bidDuration_ < 3 || bidDuration_ > 7) revert RentFactory__BidDurationOutOfRange();
+        if(bidIncrement_ < 5 || bidIncrement_ > 20) revert RentFactory__BidIncrementOutOfRange();
+        if(baseFloorBidPerPixel_ < _blockContract.costPerPixel(id_)) revert RentFactory__BaseFloorBidPerPixelOutOfRange();
 
     
         RentPool rentPool = new RentPool(id_, baseFloorBidPerPixel_, bidDuration_, bidIncrement_, address(this));

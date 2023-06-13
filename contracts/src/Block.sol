@@ -7,6 +7,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Pixel.sol";
 
 contract Block is ERC721, ERC721Enumerable, Ownable {
+    error Block__AlreadyMinted(uint256 id);
+    error Block__InvalidId(uint256 num);
+    error Block__InsufficientETH(uint256 expected, uint256 actual);
+    error Block__InvalidColorsLength();
 
     uint256 private constant ID_LIMIT = 9999;
 
@@ -21,10 +25,10 @@ contract Block is ERC721, ERC721Enumerable, Ownable {
     }
 
     function mint(uint256 id_, uint24[] memory colors_) external payable{
-        require(!_exists(id_), "Block: Block already exists!");
-        require(id_ <= ID_LIMIT, "Block: Invalid ID");
-        require(msg.value >= costPerPixel(id_) * 100, "Block: Insufficient ETH balance");
-        require(colors_.length == 100, "Block: Invalid colors length");
+        if(id_ > ID_LIMIT) revert Block__InvalidId(id_);
+        if(!_exists(id_)) revert Block__AlreadyMinted(id_);
+        if(msg.value < costPerPixel(id_) * 100) revert Block__InsufficientETH(costPerPixel(id_) * 100,msg.value);
+        if(colors_.length!=100) revert Block__InvalidColorsLength();
 
         uint256 x = id_ % 100;
         uint256 y = id_ / 100;
