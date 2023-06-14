@@ -61,7 +61,24 @@ contract StakedPixel is ERC721B, Ownable {
     function registerPool(address poolContract_) external {
         require(msg.sender == address(_rentFactoryContract), "StakedPixel: Permission Denied");
         _isRentPool[poolContract_] = true;
-    }    
+    }
+
+    function getPixelOwners(uint256[] memory ids_) external view returns(address[] memory owners) {
+        uint256 length = ids_.length;
+        owners = new address[](length);
+        
+        for(uint256 i = 0; i < length;) {
+            if(!_exists(ids_[i])){
+                owners[i] = address(0);
+                continue;
+            }
+            owners[i] = ownerOf(ids_[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
 
     
     function exists(uint256 id_) public view returns(bool) {

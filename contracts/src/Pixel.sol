@@ -17,7 +17,7 @@ contract Pixel is ERC721B, Ownable {
     /// This is so that when a pixel is not minted, or the color not set, the default color is white
     mapping(uint256 => uint24) private _invertedColor;
 
-    event ColorChange(address indexed changer, uint256[] indexed ids, uint24[] indexed colors);
+    event ColorChange(address indexed changer, uint256[] ids, uint24[] colors);
 
     constructor() ERC721B("Pixel", "PIXEL"){
     }
