@@ -39,7 +39,7 @@ contract Pixel is ERC721B, Ownable {
             if(ids_[i] > ID_LIMIT) revert Pixel__InvalidId(ids_[i]);
             _invertedColor[ids_[i]] = INVERSE_COLOR - colors_[i];
             unchecked{
-                i++;
+                ++i;
             }
         }
         _mintBatch(buyer_, ids_);
@@ -68,15 +68,15 @@ contract Pixel is ERC721B, Ownable {
             if (msg.sender != ownerOf(ids_[i])) revert Pixel__NotPixelOwner(ids_[i], msg.sender);      
 
             unchecked{
-                i++;
+                ++i;
             }
         }        
 
-        for (uint256 i = 0; i < numPixels; i++) {
+        for (uint256 i = 0; i < numPixels;) {
             _invertedColor[ids_[i]] = INVERSE_COLOR - colors_[i];
 
             unchecked{
-                i++;
+                ++i;
             }
         }
 
@@ -122,7 +122,7 @@ contract Pixel is ERC721B, Ownable {
         for (uint256 i = 0; i < 1000;) {
             cv[i] = INVERSE_COLOR -  _invertedColor[i + row_*1000];
             unchecked {
-                i++;
+                ++i;
             }
         }
         return cv;

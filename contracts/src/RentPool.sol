@@ -197,7 +197,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
                 _pixelReward[_pixelIds[i]] += pixelRewardAfterFees;
 
                 unchecked {
-                    i++;
+                    ++i;
                 }
             }
 
@@ -301,7 +301,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
                 }
 
                 unchecked{
-                    i++;
+                    ++i;
                 }
             }
             _deleteEpochStates();
@@ -338,7 +338,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
                 }
 
                 unchecked{
-                    i++;
+                    ++i;
                 }
             }
 
@@ -401,7 +401,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
             if(_pixelContract.getBlockId(ids_[i]) != _blockId) revert RentPool__PixelNotOwnedByBlock(ids_[i]);
             if(_pixelContract.ownerOf(ids_[i]) != msg.sender) revert RentPool__NotPixelOwner(ids_[i]);
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -420,7 +420,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
         for(uint256 i = 0; i < numPixels;) {
             if(_stakedPixelContract.ownerOf(ids_[i]) != msg.sender) revert RentPool__NotStakedPixelOwner(ids_[i]);
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -430,7 +430,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
             reward += _pixelReward[ids_[i]];
             delete _pixelReward[ids_[i]];
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -515,7 +515,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
                 return false;
             }
             unchecked {
-                i++;
+                ++i;
             }
         }
         return _blockContract.ownerOf(_blockId) == address(this);
@@ -553,7 +553,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
             delete _bidToBidder[i];
             delete _bidderToLastBid[bidder];
             unchecked {
-                i++;
+                ++i;
             }
         }
     }

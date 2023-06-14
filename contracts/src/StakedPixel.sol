@@ -36,10 +36,14 @@ contract StakedPixel is ERC721B, Ownable {
 
     function mint(uint256[] memory ids_, address recipient_) external {
         if(!_isRentPool[msg.sender]) revert StakedPixel__NotRentPool();
-        for(uint256 i=0;i<ids_.length;i++){
+        for(uint256 i=0;i<ids_.length;){
             if(ids_[i] > ID_LIMIT) revert StakedPixel__InvalidId(ids_[i]);
             if(_exists(ids_[i])){
                 revert StakedPixel__AlreadyMinted(ids_[i]);
+            }
+
+            unchecked{
+                ++i;
             }
         }
         _mintBatch(recipient_, ids_);        
@@ -53,9 +57,11 @@ contract StakedPixel is ERC721B, Ownable {
 
     function burn(uint256[] memory ids_) external {
         if(!_isRentPool[msg.sender]) revert StakedPixel__NotRentPool();
-        for(uint256 i=0;i<ids_.length;i++){
+        for(uint256 i=0;i<ids_.length;){
             if(!_exists(ids_[i])) revert StakedPixel__NotMinted(ids_[i]);
-
+            unchecked {
+                ++i;
+            }
         }
         _burnBatch(msg.sender, ids_);
     }
