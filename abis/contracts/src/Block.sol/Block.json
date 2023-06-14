@@ -1,5 +1,9 @@
 [
   "constructor(address)",
+  "error Block__AlreadyMinted(uint256)",
+  "error Block__InsufficientETH(uint256,uint256)",
+  "error Block__InvalidColorsLength()",
+  "error Block__InvalidId(uint256)",
   "event Approval(address indexed,address indexed,uint256 indexed)",
   "event ApprovalForAll(address indexed,address indexed,bool)",
   "event Mint(address indexed,uint256 indexed,uint256[],uint24[])",

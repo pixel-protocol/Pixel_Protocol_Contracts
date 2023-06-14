@@ -6,6 +6,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Block.sol";
 
 contract Pixel is ERC721B, Ownable {
+    error Pixel__OnlyBlock();
+    error Pixel__NotMinted(uint256 id);
+    error Pixel__InvalidId(uint256 num);
+    error Pixel__NotPixelOwner(uint256 id, address caller);
+    error Pixel__ArrayLengthMismatch();
+    error Pixel__RowIndexOutOfRange();
+    error Pixel__BatchLimitExceeded();
+    error Pixel__BlockAlreadySet();
+
     uint24 private constant INVERSE_COLOR = 16777215;
     uint256 private constant ID_LIMIT = 999999;
 
@@ -24,15 +33,13 @@ contract Pixel is ERC721B, Ownable {
 
     /// @dev Function is only callable from the Block contract
     function mint(uint24[] memory colors_, uint256[] memory ids_, address buyer_) external {
-        require(msg.sender==address(_blockContract), "Pixel: Only Block contract can mint!");
+        if (msg.sender!=address(_blockContract)) revert Pixel__OnlyBlock();
         uint256 numPixels = ids_.length;
         for (uint256 i = 0; i < numPixels;) {
-            if(ids_[i] > ID_LIMIT) {
-                revert("Pixel: Invalid Id");
-            }
+            if(ids_[i] > ID_LIMIT) revert Pixel__InvalidId(ids_[i]);
             _invertedColor[ids_[i]] = INVERSE_COLOR - colors_[i];
             unchecked{
-                i++;
+                ++i;
             }
         }
         _mintBatch(buyer_, ids_);
@@ -41,38 +48,35 @@ contract Pixel is ERC721B, Ownable {
 
     /// @notice Changes the color of a pixel
     function transform(uint24 color_, uint256 id_) external {
-        require(_exists(id_), "Pixel: Pixel not minted");
-        require(msg.sender== ownerOf(id_), "Pixel: Not the owner");
+        if(id_ > ID_LIMIT) revert Pixel__InvalidId(id_);
+        if(!_exists(id_)) revert Pixel__NotMinted(id_);
+        if(msg.sender!= ownerOf(id_)) revert Pixel__NotPixelOwner(id_, msg.sender);
         _invertedColor[id_] = INVERSE_COLOR - color_;
         emit ColorChange(msg.sender,_asSingletonArrayUINT256(id_), _asSingletonArrayUINT24(color_));
     }
 
     /// @notice Changes the color of a batch of pixels
     function transform(uint24[] memory colors_, uint256[] memory ids_) external {
-        require(colors_.length == ids_.length, "Pixel: Array lengths mismatch");
-        require(ids_.length<=100, "Pixel: Batch limit exceeded");
+        if(colors_.length != ids_.length) revert Pixel__ArrayLengthMismatch();
+        if(ids_.length>100) revert Pixel__BatchLimitExceeded();
 
         uint256 numPixels = ids_.length;
 
         for (uint256 i = 0; i < numPixels;) {
-            if(!_exists(ids_[i])) {
-                revert("Pixel: Pixel not minted");
-            }
-            
-            if (msg.sender != ownerOf(ids_[i])){
-                revert("Pixel: Not the owner");
-            }
+            if(ids_[i] > ID_LIMIT) revert Pixel__InvalidId(ids_[i]);
+            if(!_exists(ids_[i])) revert Pixel__NotMinted(ids_[i]);
+            if (msg.sender != ownerOf(ids_[i])) revert Pixel__NotPixelOwner(ids_[i], msg.sender);      
 
             unchecked{
-                i++;
+                ++i;
             }
         }        
 
-        for (uint256 i = 0; i < numPixels; i++) {
+        for (uint256 i = 0; i < numPixels;) {
             _invertedColor[ids_[i]] = INVERSE_COLOR - colors_[i];
 
             unchecked{
-                i++;
+                ++i;
             }
         }
 
@@ -112,13 +116,13 @@ contract Pixel is ERC721B, Ownable {
         view
         returns (uint24[] memory)
     {
-        require(row_ <= 999, "Pixel: Row index out of range");
+        if(row_ > 999) revert Pixel__RowIndexOutOfRange();
 
         uint24[] memory cv = new uint24[](1000);
         for (uint256 i = 0; i < 1000;) {
             cv[i] = INVERSE_COLOR -  _invertedColor[i + row_*1000];
             unchecked {
-                i++;
+                ++i;
             }
         }
         return cv;
@@ -134,7 +138,7 @@ contract Pixel is ERC721B, Ownable {
     }
     
     function setBlockContract(address contractAddress_) external onlyOwner {
-        require(!_blockContractAlreadySet, "Pixel: Block contract already set");
+        if(_blockContractAlreadySet) revert Pixel__BlockAlreadySet();
         _blockContract = Block(contractAddress_);
         _blockContractAlreadySet = true;
 

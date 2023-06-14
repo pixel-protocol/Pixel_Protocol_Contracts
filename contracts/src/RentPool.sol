@@ -40,6 +40,22 @@ struct EpochMetadata {
 
 /// @dev A RentPool contract is created for each Block
 contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
+    error RentPool__InvalidState(PoolState expected, PoolState actual);
+    error RentPool__BidDurationOutOfRange();
+    error RentPool__BidIncrementOutOfRange();
+    error RentPool__BaseFloorBidPerPixelOutOfRange();
+    error RentPool__NotBlockOwner(uint256 id);
+    error RentPool__NotStakedBlockOwner(uint256 id);
+    error RentPool__InsufficientBid(uint256 minimum, uint256 actual);
+    error RentPool__Bidder();
+    error RentPool__NotBidder();
+    error RentPool__InsufficientETH(uint256 expected, uint256 actual);
+    error RentPool__BiddingNotEnded();
+    error RentPool__EpochNotCloseable();
+    error RentPool__DurationOutOfRange();
+    error RentPool__PixelNotOwnedByBlock(uint256 id);
+    error RentPool__NotPixelOwner(uint256 id);
+    error RentPool__NotStakedPixelOwner(uint256 id);
 
     RentFactory private immutable _rentFactoryContract;
     Pixel private constant _pixelContract = Pixel(0x4bf4F110dB84e87d4cA89FAd14A47Aa2B8CA3499);
@@ -181,7 +197,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
                 _pixelReward[_pixelIds[i]] += pixelRewardAfterFees;
 
                 unchecked {
-                    i++;
+                    ++i;
                 }
             }
 
@@ -193,19 +209,21 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     }
 
     modifier onlyBlockOrStakedBlockOwner() {
-        if(_stakedBlockContract.exists(_blockId)){
-            if(_stakedBlockContract.ownerOf(_blockId) != msg.sender) revert("RentPool: Block not found or not owned");
+        uint256 blockId = _blockId;
+        if(_stakedBlockContract.exists(blockId)){
+            if(_stakedBlockContract.ownerOf(blockId) != msg.sender) revert RentPool__NotStakedBlockOwner(blockId);
         } else {
-            if(_blockContract.ownerOf(_blockId) != msg.sender) revert("RentPool: Block not found or not owned");
+            if(_blockContract.ownerOf(blockId) != msg.sender) revert RentPool__NotStakedBlockOwner(blockId);
         }
         _;
     }
 
     function adjustPoolParameters( uint256 baseFloorBidPerPixel_, uint256 bidDuration_, uint256 bidIncrement_) external onlyBlockOrStakedBlockOwner {
-        require(_poolState == PoolState.DORMANT, "RentPool: Pool must be dormant");
-        require(bidDuration_ == 0 || bidDuration_ >= 3 && bidDuration_ <= 7, "RentPool: Bid duration out of range");
-        require(bidIncrement_ == 0 || bidIncrement_ >= 5 && bidIncrement_ <= 20 , "RentPool: Bid increment out of range");
-        require(baseFloorBidPerPixel_ == 0 || baseFloorBidPerPixel_ >= _blockContract.costPerPixel(_blockId), "RentPool: Base floor bid per pixel out of range");
+        if(_poolState != PoolState.DORMANT) revert RentPool__InvalidState(PoolState.DORMANT, _poolState);
+        
+        if(bidDuration_ != 0 && (bidDuration_ < 3 || bidDuration_ > 7)) revert RentPool__BidDurationOutOfRange();
+        if(bidIncrement_ != 0 && (bidIncrement_ < 5 || bidIncrement_ > 20)) revert RentPool__BidIncrementOutOfRange();
+        if(baseFloorBidPerPixel_ != 0 && (baseFloorBidPerPixel_ < _blockContract.costPerPixel(_blockId))) revert RentPool__BaseFloorBidPerPixelOutOfRange();
         if(bidDuration_ != 0) {
             _bidDuration = bidDuration_;
         }
@@ -222,8 +240,9 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
     /// @notice Permissionless function that can be called by anyone to close the current epoch
     function closeEpoch() external {
-        require(_poolState == PoolState.ENDED, "RentPool: Pool must be ended");
-        require(block.timestamp > _endDate + 7 * 1 days, "RentPool: Pool can only be closed 7 days after end date");
+        if(_poolState != PoolState.ENDED) revert RentPool__InvalidState(PoolState.ENDED, _poolState);
+
+        if(block.timestamp <= _endDate + 7 * 1 days) revert RentPool__EpochNotCloseable();
         
         _epoch++; /// start new epoch
         _deleteEpochStates();
@@ -235,9 +254,9 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
     /// @notice Activate the rent pool in order to start accepting bids
     function activate(uint256 duration_) external onlyBlockOrStakedBlockOwner {
-        require(_poolState == PoolState.DORMANT, "RentPool: Pool must be dormant");
+        if(_poolState != PoolState.DORMANT) revert RentPool__InvalidState(PoolState.DORMANT, _poolState);
 
-        require(duration_ <= 2, "RentPool: Duration out of bound");
+        if(duration_ > 2) revert RentPool__DurationOutOfRange();
 
         _duration = _mapNumToDuration(duration_);
         _floorBidPerPixel = getFloorBidPerPixel(duration_);
@@ -249,7 +268,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
     /// @notice Deactivate the rent pool in order to stop accepting bids
     function deactivate() external onlyBlockOrStakedBlockOwner{
-        require(_poolState == PoolState.ACTIVE, "RentPool: Pool must be active");
+        if(_poolState != PoolState.ACTIVE) revert RentPool__InvalidState(PoolState.ACTIVE, _poolState);
         _poolState = PoolState.DORMANT;
 
         emit PoolStateChange(_epoch, PoolState.ACTIVE, PoolState.DORMANT);
@@ -259,7 +278,9 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     /// @notice Permissionless function, called when bidding period ends to initiate the rent epoch. 
     /// External caller will be rewarded with 0.5% of all bids.
     function initiate() external {
-        require(_poolState == PoolState.PENDING && block.timestamp > _biddingEndDate, "RentPool: Unable to initiate rent");
+        if(_poolState != PoolState.PENDING) revert RentPool__InvalidState(PoolState.PENDING, _poolState);
+
+        if(block.timestamp <= _biddingEndDate) revert RentPool__BiddingNotEnded();
         
         if(!isFullyStaked()) {
             _poolState = PoolState.ACTIVE; /// Revert back to ACTIVE state
@@ -280,7 +301,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
                 }
 
                 unchecked{
-                    i++;
+                    ++i;
                 }
             }
             _deleteEpochStates();
@@ -317,7 +338,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
                 }
 
                 unchecked{
-                    i++;
+                    ++i;
                 }
             }
 
@@ -330,12 +351,12 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
     /// @notice For caller to make their first bid in the rent epoch
     function makeBid(uint256 bidPerPixel_, uint24[] memory colors_) external payable {
-        require(_poolState == PoolState.ACTIVE || _poolState == PoolState.PENDING, "RentPool: Pool must be active or pending");
+        if(_poolState != PoolState.ACTIVE && _poolState!= PoolState.PENDING) revert RentPool__InvalidState(PoolState.ACTIVE, _poolState);
+        uint256 minBid = getMinNextBid();
+        if (bidPerPixel_ < minBid) revert RentPool__InsufficientBid(minBid, bidPerPixel_);
 
-        require(bidPerPixel_ >= getMinNextBid(), "RentPool: Bid should be higher");
-
-        require(msg.value >= bidPerPixel_ * 100, "RentPool: Insufficient ETH balance");
-        require(!isBidder(msg.sender),"RentPool: Caller already has bids");
+        if(msg.value < bidPerPixel_ * 100) revert RentPool__InsufficientETH(bidPerPixel_*100, msg.value);
+        if(isBidder(msg.sender)) revert RentPool__Bidder();
 
         _storeBid(colors_, msg.sender, bidPerPixel_);
 
@@ -352,14 +373,17 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
     /// @notice For caller with existing bid(s) to update their bid
     function updateBid(uint256 newBidPerPixel_, uint24[] memory colors_, bool isColorChanged) external payable {
-        require(_poolState == PoolState.PENDING, "RentPool: Pool must be pending");
-        require(newBidPerPixel_ == getMinNextBid(), "RentPool: Bid should be higher");
-        require(isBidder(msg.sender),"RentPool: Caller is not bidder");
+        if(_poolState != PoolState.PENDING) revert RentPool__InvalidState(PoolState.PENDING, _poolState);
+        uint256 minBid = getMinNextBid();
+        if (newBidPerPixel_ < minBid) revert RentPool__InsufficientBid(minBid, newBidPerPixel_);
+
+        if(!isBidder(msg.sender)) revert RentPool__NotBidder();
 
         uint256 key = _bidderToLastBid[msg.sender];
 
         uint256 diffToTopUp = newBidPerPixel_ - _bidPerPixel[key];
-        require(msg.value >= diffToTopUp * 100, "RentPool: Insufficient ETH balance");
+
+        if(msg.value < diffToTopUp * 100) revert RentPool__InsufficientETH(diffToTopUp*100, msg.value);
 
         if(isColorChanged){
             _storeBid(colors_, msg.sender, newBidPerPixel_);
@@ -374,14 +398,10 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     function stakePixel(uint256[] memory ids_) external {
         uint256 numPixels = ids_.length;
         for(uint256 i = 0; i < numPixels;) {
-            if(_pixelContract.getBlockId(ids_[i]) != _blockId) {
-                revert("RentPool: Pixel does not belong to block");
-            }
-            if(_pixelContract.ownerOf(ids_[i]) != msg.sender) {
-                revert("RentPool: Pixel not owned");
-            }
+            if(_pixelContract.getBlockId(ids_[i]) != _blockId) revert RentPool__PixelNotOwnedByBlock(ids_[i]);
+            if(_pixelContract.ownerOf(ids_[i]) != msg.sender) revert RentPool__NotPixelOwner(ids_[i]);
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -393,15 +413,14 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
     /// @notice Pixel owner unstakes their pixels by sending the stPIXEL (Staked Pixel) equivalent to the contract, which will then be burned by the contract. In return, they receive back the pixels they staked in the contract
     function unstakePixelWithRewards(uint256[] memory ids_) external {
-        require(_poolState != PoolState.PENDING || _poolState != PoolState.ONGOING, "RentPool: Pool must not be pending or ongoing");
+        if(_poolState == PoolState.PENDING || _poolState == PoolState.ONGOING) revert RentPool__InvalidState(PoolState.DORMANT, _poolState);
+
         uint256 numPixels = ids_.length;
 
         for(uint256 i = 0; i < numPixels;) {
-            if(_stakedPixelContract.ownerOf(ids_[i]) != msg.sender) {
-                revert("RentPool: stPixel not owned");
-            }
+            if(_stakedPixelContract.ownerOf(ids_[i]) != msg.sender) revert RentPool__NotStakedPixelOwner(ids_[i]);
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -411,7 +430,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
             reward += _pixelReward[ids_[i]];
             delete _pixelReward[ids_[i]];
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -425,11 +444,9 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     /// @notice Block owner stakes their block and in return, receives an stBLOCK (Staked Block)
     /// @dev Caller needs to approve their Block first before calling the function (i.e. ERC721.setApprovalForAll)
     function stakeBlock() external {
-        require(
-            _blockContract.ownerOf(_blockId) == msg.sender // Caller is Block owner
-            ,
-            "RentPool: Block not owned"
-        );
+        if(
+            _blockContract.ownerOf(_blockId) != msg.sender // Caller is Block owner
+        ) revert RentPool__NotBlockOwner(_blockId);
 
          _blockContract.transferFrom(msg.sender, address(this),_blockId);
 
@@ -439,12 +456,10 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
 
     /// @notice Block owner unstakes their block by sending the stBLOCK (Staked Blcok) equivalent to the contract, which will then be burned by the contract. In return, they receive back the block they staked in the contract
     function unstakeBlockWithRewards() external {
-        require(_poolState != PoolState.PENDING || _poolState != PoolState.ONGOING, "RentPool: Pool must not be pending or ongoing");
-        require(
-            _stakedBlockContract.ownerOf(_blockId) == msg.sender // Caller is Block owner
-            ,
-            "RentPool: stBlock not owned"
-        );
+        if(_poolState == PoolState.PENDING || _poolState == PoolState.ONGOING) revert RentPool__InvalidState(PoolState.DORMANT, _poolState);
+        if(
+            _stakedBlockContract.ownerOf(_blockId) != msg.sender // Caller is Block owner
+        ) revert RentPool__NotStakedBlockOwner(_blockId);
 
         uint256 reward = _blockReward;
         delete _blockReward;
@@ -500,7 +515,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
                 return false;
             }
             unchecked {
-                i++;
+                ++i;
             }
         }
         return _blockContract.ownerOf(_blockId) == address(this);
@@ -538,7 +553,7 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
             delete _bidToBidder[i];
             delete _bidderToLastBid[bidder];
             unchecked {
-                i++;
+                ++i;
             }
         }
     }

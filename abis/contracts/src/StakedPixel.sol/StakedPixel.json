@@ -1,5 +1,11 @@
 [
   "constructor()",
+  "error StakedPixel__AlreadyMinted(uint256)",
+  "error StakedPixel__FactoryAlreadySet()",
+  "error StakedPixel__InvalidId(uint256)",
+  "error StakedPixel__NotMinted(uint256)",
+  "error StakedPixel__NotRentFactory()",
+  "error StakedPixel__NotRentPool()",
   "event Approval(address indexed,address indexed,uint256 indexed)",
   "event ApprovalForAll(address indexed,address indexed,bool)",
   "event OwnershipTransferred(address indexed,address indexed)",

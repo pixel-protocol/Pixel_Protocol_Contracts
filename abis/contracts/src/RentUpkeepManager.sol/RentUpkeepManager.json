@@ -1,5 +1,8 @@
 [
   "constructor()",
+  "error RentUpkeepManager__DoesNotRequireFunding()",
+  "error RentUpkeepManager__NotRentFactory()",
+  "error RentUpkeepManager__RentFactoryAlreadySet()",
   "event OwnershipTransferred(address indexed,address indexed)",
   "function addKeeper(address) returns (uint256)",
   "function attachFactory(address)",

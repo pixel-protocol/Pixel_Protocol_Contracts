@@ -6,6 +6,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./RentFactory.sol";
 
 contract StakedPixel is ERC721B, Ownable {
+    error StakedPixel__NotRentPool();
+    error StakedPixel__NotRentFactory();
+    error StakedPixel__AlreadyMinted(uint256 id);
+    error StakedPixel__NotMinted(uint256 id);
+    error StakedPixel__InvalidId(uint256 num);
+    error StakedPixel__FactoryAlreadySet();
 
     bool _factoryIsSet;
 
@@ -20,46 +26,53 @@ contract StakedPixel is ERC721B, Ownable {
     constructor() ERC721B("stPixel","stPIXEL") {}
 
     function mint(uint256 id_, address recipient_) external {
-        require(_isRentPool[msg.sender], "StakedPixel: Caller is not a Rent Pool");
-        require(!_exists(id_), "StakedPixel: Pixel already exists!");
-        require(id_ <= ID_LIMIT, "StakedPixel: Invalid ID");
+        if(id_ > ID_LIMIT) revert StakedPixel__InvalidId(id_);
+        if(!_isRentPool[msg.sender]) revert StakedPixel__NotRentPool();
+        if(_exists(id_)) revert StakedPixel__AlreadyMinted(id_);
+        
 
         _mint(recipient_, id_);        
     }
 
     function mint(uint256[] memory ids_, address recipient_) external {
-        require(_isRentPool[msg.sender], "StakedPixel: Caller is not a Rent Pool");
-        for(uint256 i=0;i<ids_.length;i++){
-            if(_exists(ids_[i]) || ids_[i] > ID_LIMIT){
-                revert("StakedPixel: Pixel already exists!");
+        if(!_isRentPool[msg.sender]) revert StakedPixel__NotRentPool();
+        for(uint256 i=0;i<ids_.length;){
+            if(ids_[i] > ID_LIMIT) revert StakedPixel__InvalidId(ids_[i]);
+            if(_exists(ids_[i])){
+                revert StakedPixel__AlreadyMinted(ids_[i]);
+            }
+
+            unchecked{
+                ++i;
             }
         }
         _mintBatch(recipient_, ids_);        
     }
 
     function burn(uint256 id_) external {
-        require(_isRentPool[msg.sender], "StakedPixel: Caller is not a Rent Pool");
-        require(_exists(id_), "StakedPixel: Pixel does not exists!");
+        if(!_isRentPool[msg.sender]) revert StakedPixel__NotRentPool();
+        if(!_exists(id_)) revert StakedPixel__NotMinted(id_);
         _burn(id_);
     }
 
     function burn(uint256[] memory ids_) external {
-        require(_isRentPool[msg.sender], "StakedPixel: Caller is not a Rent Pool");
-        for(uint256 i=0;i<ids_.length;i++){
-            if(!_exists(ids_[i])){
-                revert("StakedPixel: Pixel does not exists!");
+        if(!_isRentPool[msg.sender]) revert StakedPixel__NotRentPool();
+        for(uint256 i=0;i<ids_.length;){
+            if(!_exists(ids_[i])) revert StakedPixel__NotMinted(ids_[i]);
+            unchecked {
+                ++i;
             }
         }
         _burnBatch(msg.sender, ids_);
     }
 
     function registerFactory(address rentFactoryContract_) external onlyOwner {
-        require(!_factoryIsSet, "StakedPixel: Factory is set");
+        if(_factoryIsSet) revert StakedPixel__FactoryAlreadySet();
         _rentFactoryContract = RentFactory(rentFactoryContract_);
         _factoryIsSet = true;
     }
     function registerPool(address poolContract_) external {
-        require(msg.sender == address(_rentFactoryContract), "StakedPixel: Permission Denied");
+        if(msg.sender != address(_rentFactoryContract)) revert StakedPixel__NotRentFactory();
         _isRentPool[poolContract_] = true;
     }
 

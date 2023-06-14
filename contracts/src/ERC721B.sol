@@ -174,7 +174,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
             }
 
             unchecked{
-                i++;
+                ++i;
             }
         }
 
@@ -342,7 +342,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
                 revert("ERC721: token already minted");
             }
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -354,7 +354,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
                 revert("ERC721: token already minted");
             }
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -370,7 +370,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
             _owners[tokenIds[i]] = to;
             emit Transfer(address(0), to, tokenIds[i]);
             unchecked {
-                i++;
+                ++i;
             }
         }
         _afterTokenTransferBatch(address(0), to, tokenIds);
@@ -419,7 +419,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
                 revert("ERC721: transfer from incorrect owner");
             }
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -431,7 +431,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
                 revert("ERC721: transfer from incorrect owner");
             }
             unchecked {
-                i++;
+                ++i;
             }
         }
         
@@ -439,7 +439,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
         for(uint256 i=0;i<numTokens;) {
             delete _tokenApprovals[tokenIds[i]];
             unchecked {
-                i++;
+                ++i;
             }
         }
         unchecked {
@@ -452,7 +452,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
             delete _owners[tokenIds[i]];
             emit Transfer(from, address(0), tokenIds[i]);
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -517,7 +517,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
             }
 
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -529,7 +529,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
                 revert("ERC721: transfer from incorrect owner");
             }
             unchecked {
-                i++;
+                ++i;
             }
         }
 
@@ -537,7 +537,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
         for(uint256 i = 0; i < numTokens;) {
             delete _tokenApprovals[tokenIds[i]];
             unchecked {
-                i++;
+                ++i;
             }
 
         }
@@ -557,7 +557,7 @@ contract ERC721B is Context, ERC165, IERC721, IERC721Metadata {
             emit Transfer(from, to, tokenIds[i]);
 
             unchecked {
-                i++;
+                ++i;
             }
 
         }
