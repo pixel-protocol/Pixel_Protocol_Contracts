@@ -16,6 +16,7 @@
   "function burn(uint256[])",
   "function exists(uint256) view returns (bool)",
   "function getApproved(uint256) view returns (address)",
+  "function getPixelOwners(uint256[]) view returns (address[])",
   "function isApprovedForAll(address,address) view returns (bool)",
   "function mint(uint256[],address)",
   "function mint(uint256,address)",

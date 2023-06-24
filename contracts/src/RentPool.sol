@@ -58,10 +58,11 @@ contract RentPool is Ownable, IERC721Receiver, AutomationCompatibleInterface {
     error RentPool__NotStakedPixelOwner(uint256 id);
 
     RentFactory private immutable _rentFactoryContract;
-    Pixel private constant _pixelContract = Pixel(0x4bf4F110dB84e87d4cA89FAd14A47Aa2B8CA3499);
-    Block private constant _blockContract = Block(0xbDb7c44fE4fcfC380EecB40ae237360285B55D2d);
-    StakedPixel private constant _stakedPixelContract = StakedPixel(0x430308df4D91e07384c71Af8c4deA4200C05B298);
-    StakedBlock private constant _stakedBlockContract = StakedBlock(0x46e0FF7458674648b83b5cAf127d84e522B3e6Ad);
+
+    Pixel private constant _pixelContract = Pixel(0x1c13c57fE0A118a1DB9e83f2B39D2b4C74B04EB6);
+    Block private constant _blockContract = Block(0xAca027EE6ee11E2b8B076f4D63422fE2735B4F48);
+    StakedPixel private constant _stakedPixelContract = StakedPixel(0xA224ad2C763fcb3937176b50Bf776909Ad689AE6);
+    StakedBlock private constant _stakedBlockContract = StakedBlock(0x04E53c97a69975564fbf1340F06CcE15EA3DED8D);
 
     uint256 private _blockId;
     uint256[] private _pixelIds;

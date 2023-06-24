@@ -26,7 +26,7 @@ contract Block is ERC721, ERC721Enumerable, Ownable {
 
     function mint(uint256 id_, uint24[] memory colors_) external payable{
         if(id_ > ID_LIMIT) revert Block__InvalidId(id_);
-        if(!_exists(id_)) revert Block__AlreadyMinted(id_);
+        if(_exists(id_)) revert Block__AlreadyMinted(id_);
         if(msg.value < costPerPixel(id_) * 100) revert Block__InsufficientETH(costPerPixel(id_) * 100,msg.value);
         if(colors_.length!=100) revert Block__InvalidColorsLength();
 
@@ -114,7 +114,7 @@ contract Block is ERC721, ERC721Enumerable, Ownable {
             for(uint256 i=0;i<numPixels;){
                 owners[i] = _pixelContract.ownerOf(selectedPixelIds[i]);
                 unchecked{
-                    i++;
+                    ++i;
                 }
             }
         }
@@ -133,7 +133,7 @@ contract Block is ERC721, ERC721Enumerable, Ownable {
             for(uint256 i=0;i<numPixels;){
                 colors[i] = _pixelContract.color(selectedPixelIds[i]);
                 unchecked {
-                    i++;
+                    ++i;
                 }
             }
         }
