@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 
 async function main() {
   const blockContractFactory = await ethers.getContractFactory("Block");
-  const blockContract = blockContractFactory.attach("0x1699151c66f1818f5b712de0F0770370E9F58eE1");
+  const blockContract = blockContractFactory.attach("0xbDb7c44fE4fcfC380EecB40ae237360285B55D2d");
 
   
   await blockContract.withdraw();

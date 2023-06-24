@@ -10,7 +10,7 @@
   "error Pixel__RowIndexOutOfRange()",
   "event Approval(address indexed,address indexed,uint256 indexed)",
   "event ApprovalForAll(address indexed,address indexed,bool)",
-  "event ColorChange(address indexed,uint256[] indexed,uint24[] indexed)",
+  "event ColorChange(address indexed,uint256[],uint24[])",
   "event OwnershipTransferred(address indexed,address indexed)",
   "event Transfer(address indexed,address indexed,uint256 indexed)",
   "function approve(address,uint256)",
