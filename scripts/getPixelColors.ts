@@ -1,11 +1,12 @@
 import { ethers } from "hardhat";
+import { blockContractAddress } from "../constants";
 
 async function main() {
   const blockContractFactory = await ethers.getContractFactory("Block");
-  const blockContract = blockContractFactory.attach("0x1699151c66f1818f5b712de0F0770370E9F58eE1");
+  const blockContract = blockContractFactory.attach(blockContractAddress);
 
   
-  const colors = await blockContract.getPixelColors(1);
+  const colors = await blockContract.getPixelColors(0);
   console.log(colors);
 }
 
